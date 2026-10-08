@@ -10,8 +10,8 @@
     "test": "vitest",
     "test:run": "vitest run",
     "typecheck": "tsc -b",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --config prettier.json --write .",
+    "format:check": "prettier --config prettier.json --check .",
     "preview": "vite preview"
   },
   "dependencies": {

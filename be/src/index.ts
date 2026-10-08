@@ -1,5 +1,8 @@
+import dotenv from "dotenv";
 import { Simulation } from "./simulation";
 import { createServer } from "./server";
+
+dotenv.config();
 
 /**
  * Load environment variables
@@ -60,4 +63,3 @@ function main() {
 }
 
 main();
-
