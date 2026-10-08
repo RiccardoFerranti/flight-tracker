@@ -1,1 +1,6 @@
 @import 'tailwindcss';
+
+.plane-marker-icon {
+  background: transparent;
+  border: 0;
+}
