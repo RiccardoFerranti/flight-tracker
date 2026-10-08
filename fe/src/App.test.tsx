@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 import App from '@/App';
 
 describe('App', () => {
-  it('renders the planes feature', () => {
+  it('renders the flight map', () => {
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'Planes' })).toBeInTheDocument();
+    expect(screen.getByText('OpenStreetMap')).toBeInTheDocument();
   });
 });
