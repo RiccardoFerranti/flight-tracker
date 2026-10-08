@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { planesMessageSchema } from './schemas';
 import type { PlaneBasic, PlanesSocketStatus } from './types';
+import { reconcilePlanes } from './utils';
 
 const planesBasicSocketUrl = import.meta.env.VITE_PLANES_BASIC_WS_URL;
 
@@ -67,7 +68,7 @@ export function usePlanesSocket(): PlanesSocketState {
           return;
         }
 
-        setPlanes(result.data.data);
+        setPlanes((previousPlanes) => reconcilePlanes(previousPlanes, result.data.data));
         setError(null);
       } catch {
         // Malformed JSON received from the WebSocket.
