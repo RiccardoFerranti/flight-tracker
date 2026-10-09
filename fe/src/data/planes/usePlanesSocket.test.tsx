@@ -85,6 +85,7 @@ describe('usePlanesSocket', () => {
         longitude: 100.5018,
         altitude: 10000,
         color: '#2563eb',
+        heading: null,
       },
     ]);
 

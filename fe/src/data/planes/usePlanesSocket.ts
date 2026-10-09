@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 
 import { planesMessageSchema } from './schemas';
-import type { PlaneBasic, PlanesSocketStatus } from './types';
+import type { PlanesSocketStatus, TrackedPlane } from './types';
 import { reconcilePlanes } from './utils';
 
 const planesBasicSocketUrl = import.meta.env.VITE_PLANES_BASIC_WS_URL;
 
 type PlanesSocketState = {
-  planes: PlaneBasic[];
+  planes: TrackedPlane[];
   status: PlanesSocketStatus;
   error: string | null;
 };
 
 export function usePlanesSocket(): PlanesSocketState {
-  const [planes, setPlanes] = useState<PlaneBasic[]>([]);
+  const [planes, setPlanes] = useState<TrackedPlane[]>([]);
   const [status, setStatus] = useState<PlanesSocketStatus>('connecting');
   const [error, setError] = useState<string | null>(null);
 
