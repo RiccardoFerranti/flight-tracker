@@ -8,9 +8,10 @@ import type { TrackedPlane } from '@/data/planes/types';
 
 type PlaneMarkerProps = {
   plane: TrackedPlane;
+  onSelect: (planeId: string) => void;
 };
 
-export const PlaneMarker = memo(function PlaneMarker({ plane }: PlaneMarkerProps) {
+export const PlaneMarker = memo(function PlaneMarker({ plane, onSelect }: PlaneMarkerProps) {
   // Lucide's Plane points north-east by default, so a -45° offset aligns its zero rotation with map north.
   const rotation = plane.heading === null ? -45 : plane.heading - 45;
 
@@ -36,7 +37,7 @@ export const PlaneMarker = memo(function PlaneMarker({ plane }: PlaneMarkerProps
       position={[plane.latitude, plane.longitude]}
       eventHandlers={{
         click: () => {
-          console.log('Plane clicked:', plane.id);
+          onSelect(plane.id);
         },
       }}
     />

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
-import { planesMessageSchema } from './schemas';
-import type { PlanesSocketStatus, TrackedPlane } from './types';
-import { reconcilePlanes } from './utils';
+import { planesMessageSchema } from "./schemas";
+import type { PlanesSocketStatus, TrackedPlane } from "./types";
+import { reconcilePlanes } from "./utils";
 
 const planesBasicSocketUrl = import.meta.env.VITE_PLANES_BASIC_WS_URL;
 
@@ -14,7 +14,7 @@ type PlanesSocketState = {
 
 export function usePlanesSocket(): PlanesSocketState {
   const [planes, setPlanes] = useState<TrackedPlane[]>([]);
-  const [status, setStatus] = useState<PlanesSocketStatus>('connecting');
+  const [status, setStatus] = useState<PlanesSocketStatus>("connecting");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,9 +35,13 @@ export function usePlanesSocket(): PlanesSocketState {
     try {
       socket = new WebSocket(planesBasicSocketUrl);
     } catch {
-      // Synchronous WebSocket construction failure.
+      // Defer the state update to avoid triggering react-hooks/set-state-in-effect
+      // while still reporting a synchronous WebSocket constructor failure immediately after the effect.
       queueMicrotask(() => {
-        handleError('Unable to create the planes WebSocket connection.', 'error');
+        handleError(
+          "Unable to create the planes WebSocket connection.",
+          "error",
+        );
       });
 
       return () => {
@@ -46,14 +50,14 @@ export function usePlanesSocket(): PlanesSocketState {
     }
 
     const handleOpen = () => {
-      setStatus('connected');
+      setStatus("connected");
       setError(null);
     };
 
     const handleMessage = (event: MessageEvent<unknown>) => {
-      if (typeof event.data !== 'string') {
+      if (typeof event.data !== "string") {
         // Unexpected WebSocket message format.
-        handleError('Received a non-text planes message.');
+        handleError("Received a non-text planes message.");
 
         return;
       }
@@ -63,41 +67,48 @@ export function usePlanesSocket(): PlanesSocketState {
 
         if (!result.success) {
           // Valid JSON, but invalid application payload.
-          handleError('Received an invalid planes message.');
+          handleError("Received an invalid planes message.");
 
           return;
         }
 
-        setPlanes((previousPlanes) => reconcilePlanes(previousPlanes, result.data.data));
+        setPlanes((previousPlanes) =>
+          reconcilePlanes(previousPlanes, result.data.data),
+        );
         setError(null);
       } catch {
         // Malformed JSON received from the WebSocket.
-        handleError('Received malformed planes JSON.');
+        handleError("Received malformed planes JSON.");
       }
     };
 
     const handleSocketError = () => {
       // Transport-level WebSocket error, not an application error from the backend.
-      handleError('The planes WebSocket connection encountered an error.', 'error');
+      handleError(
+        "The planes WebSocket connection encountered an error.",
+        "error",
+      );
     };
 
     const handleClose = () => {
-      setStatus((currentStatus) => (currentStatus === 'error' ? 'error' : 'disconnected'));
+      setStatus((currentStatus) =>
+        currentStatus === "error" ? "error" : "disconnected",
+      );
     };
 
-    socket.addEventListener('open', handleOpen);
-    socket.addEventListener('message', handleMessage);
-    socket.addEventListener('error', handleSocketError);
-    socket.addEventListener('close', handleClose);
+    socket.addEventListener("open", handleOpen);
+    socket.addEventListener("message", handleMessage);
+    socket.addEventListener("error", handleSocketError);
+    socket.addEventListener("close", handleClose);
 
     return () => {
       isActive = false;
 
       // Mirror setup before closing the connection.
-      socket.removeEventListener('open', handleOpen);
-      socket.removeEventListener('message', handleMessage);
-      socket.removeEventListener('error', handleSocketError);
-      socket.removeEventListener('close', handleClose);
+      socket.removeEventListener("open", handleOpen);
+      socket.removeEventListener("message", handleMessage);
+      socket.removeEventListener("error", handleSocketError);
+      socket.removeEventListener("close", handleClose);
 
       socket.close();
     };
