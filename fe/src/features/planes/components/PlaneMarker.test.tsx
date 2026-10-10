@@ -29,7 +29,10 @@ vi.mock('react-leaflet', () => ({
         ref={markerElementRef}
         type="button"
       >
-        <span className="plane-marker-visual">Plane marker</span>
+        <span className="plane-marker-visual">
+          Plane marker
+          <svg />
+        </span>
         {props.children}
       </button>
     );
@@ -62,7 +65,7 @@ describe('PlaneMarker', () => {
     const onSelect = vi.fn();
     const user = userEvent.setup();
 
-    render(<PlaneMarker onSelect={onSelect} plane={plane} />);
+    render(<PlaneMarker markerSize={28} onSelect={onSelect} plane={plane} />);
 
     expect(mocks.markerProps).toHaveBeenLastCalledWith(expect.objectContaining({ bubblingMouseEvents: false }));
 
@@ -74,7 +77,7 @@ describe('PlaneMarker', () => {
 
   it('releases pointer focus without removing keyboard focus', async () => {
     const user = userEvent.setup();
-    render(<PlaneMarker onSelect={vi.fn()} plane={plane} />);
+    render(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={plane} />);
 
     const marker = screen.getByRole('button', { name: 'Plane marker' });
 
@@ -87,21 +90,31 @@ describe('PlaneMarker', () => {
   });
 
   it('keeps the DivIcon stable and updates only the existing visual when heading changes', () => {
-    const { rerender } = render(<PlaneMarker onSelect={vi.fn()} plane={plane} />);
+    const { rerender } = render(
+      <PlaneMarker markerSize={23} onSelect={vi.fn()} plane={plane} />,
+    );
     const initialIcon = mocks.markerProps.mock.lastCall?.[0].icon;
     const markerVisual = screen.getByText('Plane marker');
 
     expect(markerVisual).toHaveStyle({ color: '#2563eb', transform: 'rotate(45deg)' });
+    expect(markerVisual.querySelector('svg')).toHaveAttribute('width', '23');
 
-    rerender(<PlaneMarker onSelect={vi.fn()} plane={{ ...plane, heading: 180 }} />);
+    rerender(
+      <PlaneMarker
+        markerSize={18}
+        onSelect={vi.fn()}
+        plane={{ ...plane, heading: 180 }}
+      />,
+    );
 
     expect(mocks.markerProps.mock.lastCall?.[0].icon).toBe(initialIcon);
     expect(screen.getByText('Plane marker')).toBe(markerVisual);
     expect(markerVisual).toHaveStyle({ color: '#2563eb', transform: 'rotate(135deg)' });
+    expect(markerVisual.querySelector('svg')).toHaveAttribute('width', '18');
   });
 
   it('renders the plane ID in the marker tooltip', () => {
-    render(<PlaneMarker onSelect={vi.fn()} plane={plane} />);
+    render(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={plane} />);
 
     expect(screen.getByText('plane-1')).toBeInTheDocument();
     expect(mocks.tooltipProps).toHaveBeenLastCalledWith({ direction: 'top', offset: [0, -14] });

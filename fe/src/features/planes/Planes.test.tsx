@@ -66,6 +66,18 @@ vi.mock('./components/PlaneMarker', () => ({
   ),
 }));
 
+vi.mock('./components/PlaneMarkers', () => ({
+  PlaneMarkers: ({ onPlaneSelect, planes }: { onPlaneSelect: (planeId: string) => void; planes: TrackedPlane[] }) => (
+    <>
+      {planes.map((plane) => (
+        <button key={plane.id} onClick={() => onPlaneSelect(plane.id)} type="button">
+          Select {plane.id}
+        </button>
+      ))}
+    </>
+  ),
+}));
+
 vi.mock('./components/MapClickHandler', () => ({
   MapClickHandler: ({ onClick }: { onClick: () => void }) => (
     <button onClick={onClick} type="button">

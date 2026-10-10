@@ -6,12 +6,16 @@ import { Marker, Tooltip } from "react-leaflet";
 
 import type { TrackedPlane } from "@/data/planes/types";
 
+import type { PlaneMarkerSize } from "../utils/planeMarkerSize";
+
 type PlaneMarkerProps = {
+  markerSize: PlaneMarkerSize;
   plane: TrackedPlane;
   onSelect: (planeId: string) => void;
 };
 
 export const PlaneMarker = memo(function PlaneMarker({
+  markerSize,
   plane,
   onSelect,
 }: PlaneMarkerProps) {
@@ -28,15 +32,19 @@ export const PlaneMarker = memo(function PlaneMarker({
         <span
           className="plane-marker-visual"
           style={{
+            alignItems: "center",
             color: plane.color,
-            display: "block",
+            display: "flex",
+            height: "28px",
+            justifyContent: "center",
             transform: `rotate(${rotation}deg)`,
+            width: "28px",
           }}
         >
           <Plane
             aria-hidden="true"
             color="currentColor"
-            size={28}
+            size={markerSize}
             strokeWidth={2.5}
           />
         </span>,
@@ -56,7 +64,11 @@ export const PlaneMarker = memo(function PlaneMarker({
 
     planeVisual.style.color = plane.color;
     planeVisual.style.transform = `rotate(${rotation}deg)`;
-  }, [plane.color, rotation]);
+    const planeIcon = planeVisual.querySelector("svg");
+
+    planeIcon?.setAttribute("height", String(markerSize));
+    planeIcon?.setAttribute("width", String(markerSize));
+  }, [markerSize, plane.color, rotation]);
 
   return (
     <Marker

@@ -2,7 +2,7 @@ import { usePlanesSocket } from '@/data/planes/usePlanesSocket';
 import { FlightMap } from '@/ui/FlightMap';
 
 import { MapClickHandler } from './MapClickHandler';
-import { PlaneMarker } from './PlaneMarker';
+import { PlaneMarkers } from './PlaneMarkers';
 
 type PlanesMapProps = {
   onMapClick: () => void;
@@ -15,9 +15,7 @@ export function PlanesMap({ onMapClick, onPlaneSelect }: PlanesMapProps) {
   return (
     <FlightMap>
       <MapClickHandler onClick={onMapClick} />
-      {planes.map((plane) => (
-        <PlaneMarker key={plane.id} onSelect={onPlaneSelect} plane={plane} />
-      ))}
+      <PlaneMarkers onPlaneSelect={onPlaneSelect} planes={planes} />
     </FlightMap>
   );
 }

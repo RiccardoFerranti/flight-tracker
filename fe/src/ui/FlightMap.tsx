@@ -6,7 +6,7 @@ import "leaflet/dist/leaflet.css";
 
 import { MapViewportMinZoom } from "./MapViewportMinZoom";
 
-const initialMapCenter: [number, number] = [51.505, -0.09];
+const initialMapCenter: [number, number] = [39.5, -98.35];
 const initialMapZoom = 5;
 const mercatorMaxLatitude = 85.0511287798;
 // Three world widths leave worldCopyJump's horizontal wrapping unconstrained in practice.
