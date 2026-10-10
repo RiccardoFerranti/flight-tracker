@@ -5,6 +5,7 @@ import type {
   PlaneDetailed,
   PlaneDetailsSocketStatus,
 } from "@/data/planes/types";
+import { ScrollArea } from "@/ui/ScrollArea";
 
 import { useEscapeKey } from "../hooks/useEscapeKey";
 import { formatFlightStatus } from "../utils/formatters";
@@ -43,7 +44,7 @@ export function PlaneDetailsPanel({
       aria-label="Flight details"
       className={clsx(
         "border-border-subtle bg-surface shadow-panel fixed inset-y-0 right-0 z-1100",
-        "flex w-full max-w-md flex-col overflow-y-auto border-l sm:w-104",
+        "flex w-full max-w-md flex-col overflow-hidden border-l sm:w-104",
         "transition-transform duration-300 ease-out motion-reduce:transition-none",
         !isOpen && "pointer-events-none",
       )}
@@ -82,9 +83,11 @@ export function PlaneDetailsPanel({
         )}
       </div>
 
-      <div className="flex-1 px-6 py-6">
-        <PlaneDetailsPanelContent state={panelContentState} />
-      </div>
+      <ScrollArea className="min-h-0 flex-1">
+        <div className="px-6 py-6">
+          <PlaneDetailsPanelContent state={panelContentState} />
+        </div>
+      </ScrollArea>
     </aside>
   );
 }

@@ -1,5 +1,5 @@
-import { FlightMap } from '@/components/FlightMap';
 import { usePlanesSocket } from '@/data/planes/usePlanesSocket';
+import { FlightMap } from '@/ui/FlightMap';
 
 import { MapClickHandler } from './MapClickHandler';
 import { PlaneMarker } from './PlaneMarker';

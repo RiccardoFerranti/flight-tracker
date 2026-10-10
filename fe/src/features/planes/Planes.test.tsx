@@ -38,7 +38,7 @@ function detailedPlane(id: string): PlaneDetailed {
   };
 }
 
-vi.mock('@/components/FlightMap', () => ({
+vi.mock('@/ui/FlightMap', () => ({
   FlightMap: ({ children }: PropsWithChildren) => <div>{children}</div>,
 }));
 

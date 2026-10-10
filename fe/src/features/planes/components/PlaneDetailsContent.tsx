@@ -1,7 +1,7 @@
 import { Plane } from 'lucide-react';
 
-import { Card } from '@/components/Card';
 import type { PlaneDetailed } from '@/data/planes/types';
+import { Card } from '@/ui/Card';
 
 import {
   formatAltitude,
