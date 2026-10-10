@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { TrackedPlane } from '@/data/planes/types';
@@ -7,22 +8,29 @@ import type { TrackedPlane } from '@/data/planes/types';
 const mocks = vi.hoisted(() => ({ markerProps: vi.fn() }));
 
 vi.mock('react-leaflet', () => ({
-  Marker: (props: {
-    bubblingMouseEvents?: boolean;
-    eventHandlers: { click: (event: { originalEvent: MouseEvent }) => void };
-  }) => {
+  Marker: forwardRef(function Marker(
+    props: {
+      bubblingMouseEvents?: boolean;
+      eventHandlers: { click: (event: { originalEvent: MouseEvent }) => void };
+    },
+    ref,
+  ) {
+    const markerElementRef = useRef<HTMLButtonElement>(null);
+
     mocks.markerProps(props);
+    useImperativeHandle(ref, () => ({ getElement: () => markerElementRef.current }), []);
 
     return (
       <button
         className="plane-marker-icon"
         onClick={(event) => props.eventHandlers.click({ originalEvent: event.nativeEvent })}
+        ref={markerElementRef}
         type="button"
       >
-        Plane marker
+        <span className="plane-marker-visual">Plane marker</span>
       </button>
     );
-  },
+  }),
 }));
 
 import { PlaneMarker } from './PlaneMarker';
@@ -68,5 +76,19 @@ describe('PlaneMarker', () => {
     marker.focus();
     fireEvent.click(marker, { detail: 0 });
     expect(marker).toHaveFocus();
+  });
+
+  it('keeps the DivIcon stable and updates only the existing visual when heading changes', () => {
+    const { rerender } = render(<PlaneMarker onSelect={vi.fn()} plane={plane} />);
+    const initialIcon = mocks.markerProps.mock.lastCall?.[0].icon;
+    const markerVisual = screen.getByText('Plane marker');
+
+    expect(markerVisual).toHaveStyle({ color: '#2563eb', transform: 'rotate(45deg)' });
+
+    rerender(<PlaneMarker onSelect={vi.fn()} plane={{ ...plane, heading: 180 }} />);
+
+    expect(mocks.markerProps.mock.lastCall?.[0].icon).toBe(initialIcon);
+    expect(screen.getByText('Plane marker')).toBe(markerVisual);
+    expect(markerVisual).toHaveStyle({ color: '#2563eb', transform: 'rotate(135deg)' });
   });
 });
