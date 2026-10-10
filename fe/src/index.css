@@ -1,5 +1,22 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-canvas: #0b1220;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f8fafc;
+  --color-text-primary: #172033;
+  --color-text-secondary: #536176;
+  --color-text-muted: #7a879a;
+  --color-border-subtle: #dbe3ef;
+  --color-accent: #1677ff;
+  --color-status-positive: #16825d;
+  --color-status-pending: #ca8a04;
+  --color-status-pending-subtle: #fef9c3;
+  --color-status-warning: #a95a00;
+  --radius-panel: 1.25rem;
+  --shadow-panel: -12px 0 36px rgb(15 23 42 / 18%);
+}
+
 .plane-marker-icon {
   background: transparent;
   border: 0;

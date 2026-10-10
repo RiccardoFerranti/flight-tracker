@@ -33,11 +33,20 @@ export const PlaneMarker = memo(function PlaneMarker({ plane, onSelect }: PlaneM
 
   return (
     <Marker
+      bubblingMouseEvents={false}
       icon={icon}
       position={[plane.latitude, plane.longitude]}
       eventHandlers={{
-        click: () => {
+        click: (event) => {
           onSelect(plane.id);
+
+          const eventTarget = event.originalEvent.target;
+
+          // Leaflet keeps a pointer-clicked marker focused and restores its native outline on the next keydown.
+          // Release pointer focus now; keyboard-focused markers retain their focus indicator.
+          if (event.originalEvent.detail > 0 && eventTarget instanceof Element) {
+            eventTarget.closest<HTMLElement>('.plane-marker-icon')?.blur();
+          }
         },
       }}
     />
