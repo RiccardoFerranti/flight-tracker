@@ -12,8 +12,6 @@ type PlaneDetailsPanelContentProps = {
 export function PlaneDetailsPanelContent({
   state,
 }: PlaneDetailsPanelContentProps) {
-  console.log("r2");
-
   switch (state.status) {
     case "loading":
       return <PlaneDetailsSkeleton />;

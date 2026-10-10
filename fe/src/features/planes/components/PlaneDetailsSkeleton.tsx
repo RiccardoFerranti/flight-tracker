@@ -1,23 +1,10 @@
-import clsx from "clsx";
+import { Card } from '../../../components/Card';
 
-import { Card } from "../../../components/Card";
-
-function SkeletonRow({ valueWidth }: { valueWidth: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-2.5">
-      <div className="bg-border-subtle h-3 w-20 rounded" />
-      <div className={clsx("bg-border-subtle h-3 rounded", valueWidth)} />
-    </div>
-  );
-}
+import { PlaneDetailsSkeletonRow } from './PlaneDetailsSkeletonRow';
 
 export function PlaneDetailsSkeleton() {
   return (
-    <div
-      aria-label="Loading flight details"
-      className="animate-pulse space-y-7 motion-reduce:animate-none"
-      role="status"
-    >
+    <div aria-label="Loading flight details" className="animate-pulse space-y-7 motion-reduce:animate-none" role="status">
       <span className="sr-only">Loading flight details…</span>
       <section aria-label="Loading route">
         <div className="bg-border-subtle h-3 w-14 rounded" />
@@ -34,8 +21,8 @@ export function PlaneDetailsSkeleton() {
             </div>
           </div>
           <div className="divide-border-subtle border-border-subtle mt-4 divide-y border-t">
-            <SkeletonRow valueWidth="w-32" />
-            <SkeletonRow valueWidth="w-16" />
+            <PlaneDetailsSkeletonRow valueWidth="w-32" />
+            <PlaneDetailsSkeletonRow valueWidth="w-16" />
           </div>
         </Card>
       </section>
@@ -44,9 +31,9 @@ export function PlaneDetailsSkeleton() {
         <div className="bg-border-subtle h-3 w-20 rounded" />
         <Card className="mt-3 px-4">
           <div className="divide-border-subtle divide-y">
-            <SkeletonRow valueWidth="w-24" />
-            <SkeletonRow valueWidth="w-20" />
-            <SkeletonRow valueWidth="w-32" />
+            <PlaneDetailsSkeletonRow valueWidth="w-24" />
+            <PlaneDetailsSkeletonRow valueWidth="w-20" />
+            <PlaneDetailsSkeletonRow valueWidth="w-32" />
           </div>
         </Card>
       </section>
@@ -55,11 +42,11 @@ export function PlaneDetailsSkeleton() {
         <div className="bg-border-subtle h-3 w-18 rounded" />
         <Card className="mt-3 px-4">
           <div className="divide-border-subtle divide-y">
-            <SkeletonRow valueWidth="w-20" />
-            <SkeletonRow valueWidth="w-16" />
-            <SkeletonRow valueWidth="w-24" />
-            <SkeletonRow valueWidth="w-24" />
-            <SkeletonRow valueWidth="w-24" />
+            <PlaneDetailsSkeletonRow valueWidth="w-20" />
+            <PlaneDetailsSkeletonRow valueWidth="w-16" />
+            <PlaneDetailsSkeletonRow valueWidth="w-24" />
+            <PlaneDetailsSkeletonRow valueWidth="w-24" />
+            <PlaneDetailsSkeletonRow valueWidth="w-24" />
           </div>
         </Card>
       </section>
