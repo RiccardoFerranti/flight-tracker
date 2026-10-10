@@ -2,7 +2,7 @@ import { DivIcon, Marker as LeafletMarker } from "leaflet";
 import { Plane } from "lucide-react";
 import { memo, useEffect, useRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Marker } from "react-leaflet";
+import { Marker, Tooltip } from "react-leaflet";
 
 import type { TrackedPlane } from "@/data/planes/types";
 
@@ -80,6 +80,10 @@ export const PlaneMarker = memo(function PlaneMarker({
           }
         },
       }}
-    />
+    >
+      <Tooltip direction="top" offset={[0, -14]}>
+        {plane.id}
+      </Tooltip>
+    </Marker>
   );
 });
