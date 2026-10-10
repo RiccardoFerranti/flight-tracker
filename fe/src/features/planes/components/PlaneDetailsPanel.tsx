@@ -29,7 +29,7 @@ export function PlaneDetailsPanel({
   status: detailsSocketStatus,
 }: PlaneDetailsPanelProps) {
   useEscapeKey(isOpen, onClose);
-  console.log("r1");
+
   const panelContentState = getPlaneDetailsPanelContentState(
     detailsSocketStatus,
     error,
