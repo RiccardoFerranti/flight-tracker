@@ -5,6 +5,11 @@ import type { PlanesSocketStatus, TrackedPlane } from "./types";
 import { reconcilePlanes } from "./utils";
 
 const planesBasicSocketUrl = import.meta.env.VITE_PLANES_BASIC_WS_URL;
+const baseRetryDelay = 1_000;
+const maxRetries = 5;
+const healthRetryDelay = 10_000;
+
+type RecoveryPhase = "fast" | "health";
 
 type PlanesSocketState = {
   planes: TrackedPlane[];
@@ -18,99 +23,176 @@ export function usePlanesSocket(): PlanesSocketState {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Guards the queued constructor-failure callback, not WebSocket event listeners.
-    let isActive = true;
-    let socket: WebSocket;
+    // Prevent delayed async callbacks from reconnecting after the hook has been unmounted.
+    let isMounted = true;
+    // The current socket is the source of truth. Event handlers from an older socket are ignored.
+    let currentSocket: WebSocket | null = null;
+    let removeCurrentSocketListeners: (() => void) | null = null;
+    // At most one timer may create the next socket, whether it represents a fast retry or health probe.
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    // A successful open resets recovery; a later close then starts a fresh fast-retry sequence.
+    let retryCount = 0;
+    let recoveryPhase: RecoveryPhase = "fast";
 
-    const handleError = (message: string, nextStatus?: PlanesSocketStatus) => {
-      if (!isActive) return;
-
-      if (nextStatus) {
-        setStatus(nextStatus);
+    const clearReconnectTimer = () => {
+      if (reconnectTimer !== null) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
       }
-
-      setError(message);
     };
 
-    try {
-      socket = new WebSocket(planesBasicSocketUrl);
-    } catch {
-      // Defer the state update to avoid triggering react-hooks/set-state-in-effect
-      // while still reporting a synchronous WebSocket constructor failure immediately after the effect.
-      queueMicrotask(() => {
-        handleError(
-          "Unable to create the planes WebSocket connection.",
-          "error",
-        );
-      });
+    const isCurrentSocket = (socket: WebSocket) =>
+      isMounted && currentSocket === socket;
 
-      return () => {
-        isActive = false;
-      };
-    }
+    const scheduleRecovery = () => {
+      if (!isMounted || reconnectTimer !== null) return;
 
-    const handleOpen = () => {
-      setStatus("connected");
-      setError(null);
-    };
-
-    const handleMessage = (event: MessageEvent<unknown>) => {
-      if (typeof event.data !== "string") {
-        // Unexpected WebSocket message format.
-        handleError("Received a non-text planes message.");
+      if (recoveryPhase === "fast" && retryCount < maxRetries) {
+        // Fast recovery is intentionally linear: 1s, 2s, 3s, 4s, then 5s.
+        const delay = baseRetryDelay * (retryCount + 1);
+        retryCount += 1;
+        setStatus("connecting");
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null;
+          connect();
+        }, delay);
 
         return;
       }
 
-      try {
-        const result = planesMessageSchema.safeParse(JSON.parse(event.data));
+      // Once rapid recovery is exhausted, keep the UI stably disconnected while probing less often.
+      recoveryPhase = "health";
+      setStatus("disconnected");
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connect();
+      }, healthRetryDelay);
+    };
 
-        if (!result.success) {
-          // Valid JSON, but invalid application payload.
-          handleError("Received an invalid planes message.");
+    const connect = () => {
+      // This is the only place that creates a socket. The guards make timer callbacks and `online`
+      // harmless when another connection attempt is already active.
+      if (!isMounted || currentSocket !== null || reconnectTimer !== null)
+        return;
+
+      let socket: WebSocket;
+
+      try {
+        socket = new WebSocket(planesBasicSocketUrl);
+      } catch {
+        // Defer state updates to avoid triggering React's synchronous setState-in-effect lint rule.
+        queueMicrotask(() => {
+          // State may have changed while this callback was deferred; avoid scheduling recovery
+          // if the hook was unmounted or another socket/reconnect has already taken ownership.
+          if (!isMounted || currentSocket !== null || reconnectTimer !== null)
+            return;
+
+          setError("Unable to create the planes WebSocket connection.");
+          scheduleRecovery();
+        });
+
+        return;
+      }
+
+      currentSocket = socket;
+
+      const handleOpen = () => {
+        if (!isCurrentSocket(socket)) return;
+
+        // Only an established connection ends recovery; merely constructing a socket does not.
+        clearReconnectTimer();
+        retryCount = 0;
+        recoveryPhase = "fast";
+        setStatus("connected");
+        setError(null);
+      };
+
+      const handleMessage = (event: MessageEvent<unknown>) => {
+        if (!isCurrentSocket(socket)) return;
+
+        if (typeof event.data !== "string") {
+          // Unexpected WebSocket message format.
+          setError("Received a non-text planes message.");
 
           return;
         }
 
-        setPlanes((previousPlanes) =>
-          reconcilePlanes(previousPlanes, result.data.data),
-        );
-        setError(null);
-      } catch {
-        // Malformed JSON received from the WebSocket.
-        handleError("Received malformed planes JSON.");
-      }
+        try {
+          const result = planesMessageSchema.safeParse(JSON.parse(event.data));
+
+          if (!result.success) {
+            // Valid JSON, but invalid application payload.
+            setError("Received an invalid planes message.");
+
+            return;
+          }
+
+          setPlanes((previousPlanes) =>
+            reconcilePlanes(previousPlanes, result.data.data),
+          );
+          setError(null);
+        } catch {
+          // Malformed JSON received from the WebSocket.
+          setError("Received malformed planes JSON.");
+        }
+      };
+
+      const handleSocketError = () => {
+        if (!isCurrentSocket(socket)) return;
+
+        // A transport error is normally followed by close, which owns recovery scheduling.
+        setError("The planes WebSocket connection encountered an error.");
+      };
+
+      const handleClose = () => {
+        if (!isCurrentSocket(socket)) return;
+
+        // Drop ownership before scheduling so the timer is allowed to create the replacement socket.
+        currentSocket = null;
+        removeCurrentSocketListeners?.();
+        removeCurrentSocketListeners = null;
+        scheduleRecovery();
+      };
+
+      socket.addEventListener("open", handleOpen);
+      socket.addEventListener("message", handleMessage);
+      socket.addEventListener("error", handleSocketError);
+      socket.addEventListener("close", handleClose);
+
+      removeCurrentSocketListeners = () => {
+        socket.removeEventListener("open", handleOpen);
+        socket.removeEventListener("message", handleMessage);
+        socket.removeEventListener("error", handleSocketError);
+        socket.removeEventListener("close", handleClose);
+      };
     };
 
-    const handleSocketError = () => {
-      // Transport-level WebSocket error, not an application error from the backend.
-      handleError(
-        "The planes WebSocket connection encountered an error.",
-        "error",
-      );
+    const handleOnline = () => {
+      if (!isMounted || currentSocket !== null) return;
+
+      // Preserve the active phase: an online event accelerates recovery but never resets it.
+      // In health mode, a failed immediate attempt therefore returns to 10-second probes, not fast retries.
+      clearReconnectTimer();
+      connect();
     };
 
-    const handleClose = () => {
-      setStatus((currentStatus) =>
-        currentStatus === "error" ? "error" : "disconnected",
-      );
-    };
+    window.addEventListener("online", handleOnline);
 
-    socket.addEventListener("open", handleOpen);
-    socket.addEventListener("message", handleMessage);
-    socket.addEventListener("error", handleSocketError);
-    socket.addEventListener("close", handleClose);
+    // Initial connection attempt is made immediately on mount.
+    connect();
 
     return () => {
-      isActive = false;
+      // Mark the hook inactive first so closing the socket cannot schedule a reconnect through a late close event.
+      isMounted = false;
+      clearReconnectTimer();
+      window.removeEventListener("online", handleOnline);
 
-      // Mirror setup before closing the connection.
-      socket.removeEventListener("open", handleOpen);
-      socket.removeEventListener("message", handleMessage);
-      socket.removeEventListener("error", handleSocketError);
-      socket.removeEventListener("close", handleClose);
-
-      socket.close();
+      if (currentSocket !== null) {
+        removeCurrentSocketListeners?.();
+        removeCurrentSocketListeners = null;
+        currentSocket.close();
+        currentSocket = null;
+      }
     };
   }, []);
 
