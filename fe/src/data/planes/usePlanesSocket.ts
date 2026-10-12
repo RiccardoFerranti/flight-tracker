@@ -176,7 +176,24 @@ export function usePlanesSocket(): PlanesSocketState {
       connect();
     };
 
+    // While the browser is offline, stop the current connection and pause recovery.
+    // The `online` event will start a fresh connection when network access returns.
+    const handleOffline = () => {
+      if (!isMounted) return;
+
+      clearReconnectTimer();
+      setStatus("disconnected");
+
+      if (currentSocket !== null) {
+        removeCurrentSocketListeners?.();
+        removeCurrentSocketListeners = null;
+        currentSocket.close();
+        currentSocket = null;
+      }
+    };
+
     window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     // Initial connection attempt is made immediately on mount.
     connect();
@@ -185,7 +202,9 @@ export function usePlanesSocket(): PlanesSocketState {
       // Mark the hook inactive first so closing the socket cannot schedule a reconnect through a late close event.
       isMounted = false;
       clearReconnectTimer();
+
       window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
 
       if (currentSocket !== null) {
         removeCurrentSocketListeners?.();

@@ -105,6 +105,7 @@ describe('Planes selection', () => {
     render(<Planes />);
 
     expect(screen.getByTestId('panel-state')).toHaveTextContent('closed');
+    expect(screen.getByText('Live data')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Select plane-1' }));
     expect(screen.getByTestId('panel-state')).toHaveTextContent('plane-1');

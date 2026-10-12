@@ -1,8 +1,9 @@
-import { usePlanesSocket } from '@/data/planes/usePlanesSocket';
-import { FlightMap } from '@/ui/FlightMap';
+import { usePlanesSocket } from "@/data/planes/usePlanesSocket";
+import { FlightMap } from "@/ui/FlightMap";
 
-import { MapClickHandler } from './MapClickHandler';
-import { PlaneMarkers } from './PlaneMarkers';
+import { BasicPlanesConnectionBadge } from "./BasicPlanesConnectionBadge";
+import { MapClickHandler } from "./MapClickHandler";
+import { PlaneMarkers } from "./PlaneMarkers";
 
 type PlanesMapProps = {
   onMapClick: () => void;
@@ -10,12 +11,15 @@ type PlanesMapProps = {
 };
 
 export function PlanesMap({ onMapClick, onPlaneSelect }: PlanesMapProps) {
-  const { planes } = usePlanesSocket();
-
+  const { planes, status } = usePlanesSocket();
+  console.log(status);
   return (
-    <FlightMap>
-      <MapClickHandler onClick={onMapClick} />
-      <PlaneMarkers onPlaneSelect={onPlaneSelect} planes={planes} />
-    </FlightMap>
+    <div className="relative">
+      <FlightMap>
+        <MapClickHandler onClick={onMapClick} />
+        <PlaneMarkers onPlaneSelect={onPlaneSelect} planes={planes} />
+      </FlightMap>
+      <BasicPlanesConnectionBadge status={status} />
+    </div>
   );
 }
