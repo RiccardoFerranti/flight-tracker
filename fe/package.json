@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "test": "vitest",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:run": "vitest run",
     "typecheck": "tsc -b",
+    "check": "npm run lint && npm run typecheck && npm run test",
     "format": "prettier --config prettier.json --write .",
     "format:check": "prettier --config prettier.json --check .",
     "preview": "vite preview"
