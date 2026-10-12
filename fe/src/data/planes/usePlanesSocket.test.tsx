@@ -51,6 +51,28 @@ function runNextRetry(delay: number): void {
   act(() => vi.advanceTimersByTime(delay));
 }
 
+function emitValidPlanesMessage(socket: MockWebSocket): void {
+  act(() => {
+    socket.emit(
+      'message',
+      new MessageEvent('message', {
+        data: JSON.stringify({
+          type: 'planes',
+          data: [
+            {
+              id: 'plane-1',
+              latitude: 13.7563,
+              longitude: 100.5018,
+              altitude: 10000,
+              color: '#2563eb',
+            },
+          ],
+        }),
+      }),
+    );
+  });
+}
+
 async function flushMicrotasks(): Promise<void> {
   await act(async () => {
     await Promise.resolve();
@@ -78,7 +100,7 @@ describe('usePlanesSocket', () => {
       socket.emit('open', new Event('open'));
     });
 
-    expect(result.current.status).toBe('connected');
+    expect(result.current.status).toBe('connecting');
 
     act(() => {
       socket.emit(
@@ -110,6 +132,7 @@ describe('usePlanesSocket', () => {
         heading: null,
       },
     ]);
+    expect(result.current.status).toBe('connected');
 
     act(() => {
       socket.emit('message', new MessageEvent('message', { data: '{invalid-json' }));
@@ -161,6 +184,7 @@ describe('usePlanesSocket', () => {
     runNextRetry(10_000);
     const healthSocket = MockWebSocket.instances[6];
     act(() => healthSocket.emit('open', new Event('open')));
+    emitValidPlanesMessage(healthSocket);
 
     expect(result.current.status).toBe('connected');
 
@@ -187,6 +211,100 @@ describe('usePlanesSocket', () => {
     expect(MockWebSocket.instances).toHaveLength(2);
 
     unmount();
+  });
+
+  it('closes a stale feed after five seconds and lets close schedule one recovery', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('WebSocket', MockWebSocket);
+
+    const { result, unmount } = renderHook(() => usePlanesSocket());
+    const socket = MockWebSocket.instances[0];
+    emitValidPlanesMessage(socket);
+
+    runNextRetry(4_000);
+    emitValidPlanesMessage(socket);
+    runNextRetry(4_999);
+    expect(socket.close).not.toHaveBeenCalled();
+
+    runNextRetry(1);
+    expect(socket.close).toHaveBeenCalledOnce();
+
+    closeSocket(socket);
+    runNextRetry(1_000);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    expect(result.current.status).toBe('connecting');
+
+    unmount();
+  });
+
+  it('keeps waiting after open until a valid snapshot arrives, then resets recovery', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('WebSocket', MockWebSocket);
+
+    const { result, unmount } = renderHook(() => usePlanesSocket());
+    const firstSocket = MockWebSocket.instances[0];
+    act(() => firstSocket.emit('open', new Event('open')));
+
+    expect(result.current.status).toBe('connecting');
+    runNextRetry(5_000);
+    expect(firstSocket.close).toHaveBeenCalledOnce();
+    closeSocket(firstSocket);
+
+    runNextRetry(1_000);
+    const retrySocket = MockWebSocket.instances[1];
+    act(() => retrySocket.emit('open', new Event('open')));
+    runNextRetry(5_000);
+    closeSocket(retrySocket);
+
+    // No valid snapshot arrived on either socket, so the second fast retry still waits two seconds.
+    runNextRetry(1_999);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    runNextRetry(1);
+    const liveSocket = MockWebSocket.instances[2];
+    act(() => liveSocket.emit('open', new Event('open')));
+    emitValidPlanesMessage(liveSocket);
+
+    expect(result.current.status).toBe('connected');
+
+    unmount();
+  });
+
+  it('does not treat invalid messages as feed activity', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('WebSocket', MockWebSocket);
+
+    const { unmount } = renderHook(() => usePlanesSocket());
+    const socket = MockWebSocket.instances[0];
+    emitValidPlanesMessage(socket);
+    runNextRetry(4_000);
+
+    act(() => socket.emit('message', new MessageEvent('message', { data: '{invalid-json' })));
+    runNextRetry(1_000);
+
+    expect(socket.close).toHaveBeenCalledOnce();
+    unmount();
+  });
+
+  it('cancels the stale watchdog when the browser goes offline or the hook unmounts', () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('WebSocket', MockWebSocket);
+
+    const firstHook = renderHook(() => usePlanesSocket());
+    const offlineSocket = MockWebSocket.instances[0];
+    emitValidPlanesMessage(offlineSocket);
+
+    act(() => window.dispatchEvent(new Event('offline')));
+    runNextRetry(5_000);
+    expect(offlineSocket.close).toHaveBeenCalledOnce();
+    firstHook.unmount();
+
+    const secondHook = renderHook(() => usePlanesSocket());
+    const cleanupSocket = MockWebSocket.instances[1];
+    emitValidPlanesMessage(cleanupSocket);
+    secondHook.unmount();
+    runNextRetry(5_000);
+
+    expect(cleanupSocket.close).toHaveBeenCalledOnce();
   });
 
   it('routes synchronous constructor failures through recovery', async () => {

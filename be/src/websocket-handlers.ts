@@ -1,6 +1,10 @@
 import { WebSocket } from "ws";
 import { Simulation } from "./simulation";
-import { BasicPlanesMessage, PlaneDetailsMessage, SubscribeMessage } from "./types";
+import {
+  BasicPlanesMessage,
+  PlaneDetailsMessage,
+  SubscribeMessage,
+} from "./types";
 
 /**
  * Handle basic planes WebSocket connection
@@ -9,7 +13,7 @@ import { BasicPlanesMessage, PlaneDetailsMessage, SubscribeMessage } from "./typ
 export function handleBasicPlanesConnection(
   ws: WebSocket,
   simulation: Simulation,
-  updateInterval: number
+  updateInterval: number,
 ): () => void {
   let intervalId: NodeJS.Timeout | null = null;
 
@@ -44,7 +48,7 @@ export function handleBasicPlanesConnection(
 export function handlePlaneDetailsConnection(
   ws: WebSocket,
   simulation: Simulation,
-  updateInterval: number
+  updateInterval: number,
 ): () => void {
   let subscribedPlaneId: string | null = null;
   let intervalId: NodeJS.Timeout | null = null;
@@ -77,7 +81,7 @@ export function handlePlaneDetailsConnection(
             JSON.stringify({
               type: "error",
               message: `Plane ${message.planeId} not found`,
-            })
+            }),
           );
           ws.close(1008, "Plane not found");
           return;
@@ -100,8 +104,9 @@ export function handlePlaneDetailsConnection(
         ws.send(
           JSON.stringify({
             type: "error",
-            message: "Invalid message format. Expected { type: 'subscribe', planeId: string }",
-          })
+            message:
+              "Invalid message format. Expected { type: 'subscribe', planeId: string }",
+          }),
         );
       }
     } catch (error) {
@@ -109,7 +114,7 @@ export function handlePlaneDetailsConnection(
         JSON.stringify({
           type: "error",
           message: "Invalid JSON message",
-        })
+        }),
       );
     }
   });
@@ -121,4 +126,3 @@ export function handlePlaneDetailsConnection(
     }
   };
 }
-
