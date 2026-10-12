@@ -12,7 +12,7 @@ type PlanesMapProps = {
 
 export function PlanesMap({ onMapClick, onPlaneSelect }: PlanesMapProps) {
   const { planes, status } = usePlanesSocket();
-  console.log(status);
+
   return (
     <div className="relative">
       <FlightMap>

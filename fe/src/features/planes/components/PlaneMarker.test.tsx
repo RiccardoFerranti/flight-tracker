@@ -6,7 +6,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { TrackedPlane } from '@/data/planes/types';
 
-const mocks = vi.hoisted(() => ({ markerProps: vi.fn(), tooltipProps: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  markerProps: vi.fn(),
+  tooltipProps: vi.fn(),
+  markerApis: [] as Array<{
+    getElement: () => HTMLButtonElement | null;
+    getLatLng: () => { lat: number; lng: number };
+    setLatLng: ReturnType<typeof vi.fn>;
+  }>,
+}));
 
 vi.mock('react-leaflet', () => ({
   Marker: forwardRef(function Marker(
@@ -14,13 +22,25 @@ vi.mock('react-leaflet', () => ({
       bubblingMouseEvents?: boolean;
       eventHandlers: { click: (event: { originalEvent: MouseEvent }) => void };
       children?: ReactNode;
+      position: [number, number];
     },
     ref,
   ) {
     const markerElementRef = useRef<HTMLButtonElement>(null);
+    const markerPositionRef = useRef({ lat: props.position[0], lng: props.position[1] });
+    const markerApiRef = useRef({
+      getElement: () => markerElementRef.current,
+      getLatLng: () => markerPositionRef.current,
+      setLatLng: vi.fn((position: [number, number]) => {
+        markerPositionRef.current = { lat: position[0], lng: position[1] };
+      }),
+    });
 
     mocks.markerProps(props);
-    useImperativeHandle(ref, () => ({ getElement: () => markerElementRef.current }), []);
+    if (!mocks.markerApis.includes(markerApiRef.current)) {
+      mocks.markerApis.push(markerApiRef.current);
+    }
+    useImperativeHandle(ref, () => markerApiRef.current, []);
 
     return (
       <button
@@ -58,6 +78,8 @@ afterEach(() => {
   cleanup();
   mocks.markerProps.mockClear();
   mocks.tooltipProps.mockClear();
+  mocks.markerApis.length = 0;
+  vi.unstubAllGlobals();
 });
 
 describe('PlaneMarker', () => {
@@ -90,27 +112,78 @@ describe('PlaneMarker', () => {
   });
 
   it('keeps the DivIcon stable and updates only the existing visual when heading changes', () => {
-    const { rerender } = render(
-      <PlaneMarker markerSize={23} onSelect={vi.fn()} plane={plane} />,
-    );
+    const { rerender } = render(<PlaneMarker markerSize={23} onSelect={vi.fn()} plane={plane} />);
     const initialIcon = mocks.markerProps.mock.lastCall?.[0].icon;
     const markerVisual = screen.getByText('Plane marker');
 
     expect(markerVisual).toHaveStyle({ color: '#2563eb', transform: 'rotate(45deg)' });
     expect(markerVisual.querySelector('svg')).toHaveAttribute('width', '23');
 
-    rerender(
-      <PlaneMarker
-        markerSize={18}
-        onSelect={vi.fn()}
-        plane={{ ...plane, heading: 180 }}
-      />,
-    );
+    rerender(<PlaneMarker markerSize={18} onSelect={vi.fn()} plane={{ ...plane, heading: 180 }} />);
 
     expect(mocks.markerProps.mock.lastCall?.[0].icon).toBe(initialIcon);
     expect(screen.getByText('Plane marker')).toBe(markerVisual);
     expect(markerVisual).toHaveStyle({ color: '#2563eb', transform: 'rotate(135deg)' });
     expect(markerVisual.querySelector('svg')).toHaveAttribute('width', '18');
+  });
+
+  it('interpolates a new position with Leaflet without animating the initial render', () => {
+    let nextAnimationFrame = 0;
+    const animationFrames = new Map<number, FrameRequestCallback>();
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn((callback: FrameRequestCallback) => {
+        nextAnimationFrame += 1;
+        animationFrames.set(nextAnimationFrame, callback);
+
+        return nextAnimationFrame;
+      }),
+    );
+    vi.stubGlobal(
+      'cancelAnimationFrame',
+      vi.fn((frame: number) => animationFrames.delete(frame)),
+    );
+
+    const { rerender } = render(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={plane} />);
+    const marker = mocks.markerApis[0];
+    expect(requestAnimationFrame).not.toHaveBeenCalled();
+
+    rerender(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={{ ...plane, latitude: 14, longitude: 101 }} />);
+
+    expect(requestAnimationFrame).toHaveBeenCalledOnce();
+    animationFrames.get(1)?.(0);
+    animationFrames.get(2)?.(425);
+
+    expect(marker.setLatLng).toHaveBeenCalledTimes(2);
+    expect(marker.getLatLng().lat).toBeGreaterThan(plane.latitude);
+    expect(marker.getLatLng().lat).toBeLessThan(14);
+  });
+
+  it('cancels a pending frame when the target changes or the marker unmounts', () => {
+    let nextAnimationFrame = 0;
+    const animationFrames = new Map<number, FrameRequestCallback>();
+    vi.stubGlobal(
+      'requestAnimationFrame',
+      vi.fn((callback: FrameRequestCallback) => {
+        nextAnimationFrame += 1;
+        animationFrames.set(nextAnimationFrame, callback);
+
+        return nextAnimationFrame;
+      }),
+    );
+    vi.stubGlobal(
+      'cancelAnimationFrame',
+      vi.fn((frame: number) => animationFrames.delete(frame)),
+    );
+
+    const { rerender, unmount } = render(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={plane} />);
+    rerender(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={{ ...plane, latitude: 14, longitude: 101 }} />);
+
+    rerender(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={{ ...plane, latitude: 15, longitude: 102 }} />);
+
+    expect(cancelAnimationFrame).toHaveBeenCalledWith(1);
+    unmount();
+    expect(cancelAnimationFrame).toHaveBeenCalledWith(2);
   });
 
   it('renders the plane ID in the marker tooltip', () => {
