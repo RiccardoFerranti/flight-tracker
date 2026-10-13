@@ -92,7 +92,7 @@ describe('PlaneMarker', () => {
     const onSelect = vi.fn();
     const user = userEvent.setup();
 
-    render(<PlaneMarker markerSize={28} onSelect={onSelect} plane={plane} />);
+    render(<PlaneMarker isSelected={false} markerSize={28} onSelect={onSelect} plane={plane} />);
 
     expect(mocks.markerProps).toHaveBeenLastCalledWith(expect.objectContaining({ bubblingMouseEvents: false }));
 
@@ -104,7 +104,7 @@ describe('PlaneMarker', () => {
 
   it('releases pointer focus without removing keyboard focus', async () => {
     const user = userEvent.setup();
-    render(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={plane} />);
+    render(<PlaneMarker isSelected={false} markerSize={28} onSelect={vi.fn()} plane={plane} />);
 
     const marker = screen.getByRole('button', { name: 'Select flight plane-1' });
 
@@ -118,7 +118,7 @@ describe('PlaneMarker', () => {
 
   it('selects from keyboard with Enter or Space and prevents Space scrolling', () => {
     const onSelect = vi.fn();
-    render(<PlaneMarker markerSize={28} onSelect={onSelect} plane={plane} />);
+    render(<PlaneMarker isSelected={false} markerSize={28} onSelect={onSelect} plane={plane} />);
 
     const marker = screen.getByRole('button', { name: 'Select flight plane-1' });
 
@@ -129,19 +129,36 @@ describe('PlaneMarker', () => {
   });
 
   it('keeps the DivIcon stable and updates only the existing visual when heading changes', () => {
-    const { rerender } = render(<PlaneMarker markerSize={23} onSelect={vi.fn()} plane={plane} />);
+    const { rerender } = render(<PlaneMarker isSelected={false} markerSize={23} onSelect={vi.fn()} plane={plane} />);
     const initialIcon = mocks.markerProps.mock.lastCall?.[0].icon;
     const markerVisual = screen.getByText('Plane marker');
 
     expect(markerVisual).toHaveStyle({ color: '#2563eb', transform: 'rotate(45deg)' });
     expect(markerVisual.querySelector('svg')).toHaveAttribute('width', '23');
 
-    rerender(<PlaneMarker markerSize={18} onSelect={vi.fn()} plane={{ ...plane, heading: 180 }} />);
+    rerender(<PlaneMarker isSelected={false} markerSize={18} onSelect={vi.fn()} plane={{ ...plane, heading: 180 }} />);
 
     expect(mocks.markerProps.mock.lastCall?.[0].icon).toBe(initialIcon);
     expect(screen.getByText('Plane marker')).toBe(markerVisual);
     expect(markerVisual).toHaveStyle({ color: '#2563eb', transform: 'rotate(135deg)' });
     expect(markerVisual.querySelector('svg')).toHaveAttribute('width', '18');
+  });
+
+  it('toggles the selected class on the existing Leaflet marker element', () => {
+    const { rerender } = render(<PlaneMarker isSelected={false} markerSize={28} onSelect={vi.fn()} plane={plane} />);
+    const marker = screen.getByRole('button', { name: 'Select flight plane-1' });
+    const initialIcon = mocks.markerProps.mock.lastCall?.[0].icon;
+
+    expect(marker).not.toHaveClass('plane-marker-icon-selected');
+
+    rerender(<PlaneMarker isSelected markerSize={28} onSelect={vi.fn()} plane={plane} />);
+
+    expect(marker).toHaveClass('plane-marker-icon-selected');
+    expect(mocks.markerProps.mock.lastCall?.[0].icon).toBe(initialIcon);
+
+    rerender(<PlaneMarker isSelected={false} markerSize={28} onSelect={vi.fn()} plane={plane} />);
+
+    expect(marker).not.toHaveClass('plane-marker-icon-selected');
   });
 
   it('interpolates a new position with Leaflet without animating the initial render', () => {
@@ -161,11 +178,11 @@ describe('PlaneMarker', () => {
       vi.fn((frame: number) => animationFrames.delete(frame)),
     );
 
-    const { rerender } = render(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={plane} />);
+    const { rerender } = render(<PlaneMarker isSelected={false} markerSize={28} onSelect={vi.fn()} plane={plane} />);
     const marker = mocks.markerApis[0];
     expect(requestAnimationFrame).not.toHaveBeenCalled();
 
-    rerender(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={{ ...plane, latitude: 14, longitude: 101 }} />);
+    rerender(<PlaneMarker isSelected={false} markerSize={28} onSelect={vi.fn()} plane={{ ...plane, latitude: 14, longitude: 101 }} />);
 
     expect(requestAnimationFrame).toHaveBeenCalledOnce();
     animationFrames.get(1)?.(0);
@@ -193,10 +210,10 @@ describe('PlaneMarker', () => {
       vi.fn((frame: number) => animationFrames.delete(frame)),
     );
 
-    const { rerender, unmount } = render(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={plane} />);
-    rerender(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={{ ...plane, latitude: 14, longitude: 101 }} />);
+    const { rerender, unmount } = render(<PlaneMarker isSelected={false} markerSize={28} onSelect={vi.fn()} plane={plane} />);
+    rerender(<PlaneMarker isSelected={false} markerSize={28} onSelect={vi.fn()} plane={{ ...plane, latitude: 14, longitude: 101 }} />);
 
-    rerender(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={{ ...plane, latitude: 15, longitude: 102 }} />);
+    rerender(<PlaneMarker isSelected={false} markerSize={28} onSelect={vi.fn()} plane={{ ...plane, latitude: 15, longitude: 102 }} />);
 
     expect(cancelAnimationFrame).toHaveBeenCalledWith(1);
     unmount();
@@ -204,7 +221,7 @@ describe('PlaneMarker', () => {
   });
 
   it('renders the plane ID in the marker tooltip', () => {
-    render(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={plane} />);
+    render(<PlaneMarker isSelected={false} markerSize={28} onSelect={vi.fn()} plane={plane} />);
 
     expect(screen.getByText('plane-1')).toBeInTheDocument();
     expect(mocks.tooltipProps).toHaveBeenLastCalledWith({ direction: 'top', offset: [0, -14] });

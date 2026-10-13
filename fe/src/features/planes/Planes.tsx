@@ -28,7 +28,11 @@ export function Planes() {
 
   return (
     <>
-      <PlanesMap onMapClick={closePanel} onPlaneSelect={selectPlane} />
+      <PlanesMap
+        onMapClick={closePanel}
+        onPlaneSelect={selectPlane}
+        selectedPlaneId={selectedPlaneId}
+      />
       <SelectedPlaneDetails
         focusRequest={detailsFocusRequest}
         onClose={closePanel}

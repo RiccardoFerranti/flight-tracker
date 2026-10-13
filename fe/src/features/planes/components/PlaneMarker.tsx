@@ -10,12 +10,14 @@ import { useInterpolatedMarkerPosition } from "../hooks/useInterpolatedMarkerPos
 import type { PlaneMarkerSize } from "../utils/planeMarkerSize";
 
 type PlaneMarkerProps = {
+  isSelected: boolean;
   markerSize: PlaneMarkerSize;
   plane: TrackedPlane;
   onSelect: (planeId: string, selectedWithKeyboard?: boolean) => void;
 };
 
 export const PlaneMarker = memo(function PlaneMarker({
+  isSelected,
   markerSize,
   plane,
   onSelect,
@@ -60,6 +62,7 @@ export const PlaneMarker = memo(function PlaneMarker({
     });
   }
 
+  // Sync dynamic marker visuals with the existing Leaflet DivIcon without recreating it.
   useEffect(() => {
     // The DivIcon HTML is owned by Leaflet, so access its DOM element directly to update the visual without recreating the icon.
     const planeVisual = markerRef.current
@@ -76,12 +79,21 @@ export const PlaneMarker = memo(function PlaneMarker({
     planeIcon?.setAttribute("width", String(markerSize));
   }, [markerSize, plane.color, rotation]);
 
+  // Keep the Leaflet marker's accessible name in sync with the current plane.
   useEffect(() => {
     // DivIcon is not a native button, so give Leaflet's interactive marker a stable accessible name.
     markerRef.current
       ?.getElement()
       ?.setAttribute("aria-label", `Select flight ${plane.id}`);
   }, [plane.id]);
+
+  // Toggle the persistent selected state on the existing Leaflet marker element.
+  useEffect(() => {
+    // Keep the DivIcon stable and update its existing Leaflet DOM element for persistent selection styling.
+    markerRef.current
+      ?.getElement()
+      ?.classList.toggle("plane-marker-icon-selected", isSelected);
+  }, [isSelected]);
 
   useInterpolatedMarkerPosition(markerRef, plane.latitude, plane.longitude);
 

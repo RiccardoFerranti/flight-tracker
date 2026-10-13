@@ -17,7 +17,7 @@ vi.mock('react-leaflet', () => ({
 }));
 
 vi.mock('./PlaneMarker', () => ({
-  PlaneMarker: ({ plane, ...props }: { plane: TrackedPlane; markerSize: number; onSelect: (id: string) => void }) => {
+  PlaneMarker: ({ plane, ...props }: { isSelected: boolean; plane: TrackedPlane; markerSize: number; onSelect: (id: string) => void }) => {
     mocks.planeMarkerProps({ plane, ...props });
     return <output>{plane.id}</output>;
   },
@@ -39,7 +39,7 @@ afterEach(() => {
 
 describe('PlaneMarkers', () => {
   it('renders every tracked plane with a size derived from the initial map zoom', () => {
-    render(<PlaneMarkers onPlaneSelect={vi.fn()} planes={planes} />);
+    render(<PlaneMarkers onPlaneSelect={vi.fn()} planes={planes} selectedPlaneId={null} />);
 
     expect(screen.getByText('plane-1')).toBeInTheDocument();
     expect(screen.getByText('plane-2')).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe('PlaneMarkers', () => {
   });
 
   it('updates marker size after a zoom crosses a size threshold', () => {
-    render(<PlaneMarkers onPlaneSelect={vi.fn()} planes={planes} />);
+    render(<PlaneMarkers onPlaneSelect={vi.fn()} planes={planes} selectedPlaneId="plane-2" />);
 
     act(() => {
       mocks.zoom = 7;
@@ -58,7 +58,7 @@ describe('PlaneMarkers', () => {
     });
 
     expect(mocks.planeMarkerProps).toHaveBeenLastCalledWith(
-      expect.objectContaining({ markerSize: 28, plane: planes[1] }),
+      expect.objectContaining({ isSelected: true, markerSize: 28, plane: planes[1] }),
     );
   });
 });
