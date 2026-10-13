@@ -34,7 +34,22 @@ function stubAnimationFrames() {
   return frames;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+function stubMonotonicClock(initialTime = 0) {
+  let currentTime = initialTime;
+
+  vi.spyOn(performance, 'now').mockImplementation(() => currentTime);
+
+  return {
+    advanceBy: (milliseconds: number) => {
+      currentTime += milliseconds;
+    },
+  };
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 describe('useInterpolatedMarkerPosition', () => {
   it('does not animate the initial position or an unchanged update', () => {
@@ -57,10 +72,12 @@ describe('useInterpolatedMarkerPosition', () => {
     const marker = createMarker(10, 20);
     const markerRef = { current: marker } as RefObject<LeafletMarker | null>;
     const frames = stubAnimationFrames();
+    const clock = stubMonotonicClock();
     const { rerender } = renderHook(({ latitude, longitude }) => useInterpolatedMarkerPosition(markerRef, latitude, longitude), {
       initialProps: { latitude: 10, longitude: 20 },
     });
 
+    clock.advanceBy(1_000);
     rerender({ latitude: 14, longitude: 24 });
     act(() => frames.get(1)?.(100));
     act(() => frames.get(2)?.(525));
@@ -70,6 +87,42 @@ describe('useInterpolatedMarkerPosition', () => {
     expect(marker.setLatLng).toHaveBeenNthCalledWith(2, [12, 22]);
     expect(marker.setLatLng).toHaveBeenLastCalledWith([14, 24]);
     expect(requestAnimationFrame).toHaveBeenCalledTimes(3);
+  });
+
+  it('snaps after a gap longer than three seconds, then resumes interpolation', () => {
+    const marker = createMarker(10, 20);
+    const markerRef = { current: marker } as RefObject<LeafletMarker | null>;
+    stubAnimationFrames();
+    const clock = stubMonotonicClock();
+    const { rerender } = renderHook(({ latitude, longitude }) => useInterpolatedMarkerPosition(markerRef, latitude, longitude), {
+      initialProps: { latitude: 10, longitude: 20 },
+    });
+
+    clock.advanceBy(3_001);
+    rerender({ latitude: 14, longitude: 24 });
+
+    expect(marker.setLatLng).toHaveBeenCalledWith([14, 24]);
+    expect(requestAnimationFrame).not.toHaveBeenCalled();
+
+    clock.advanceBy(1_000);
+    rerender({ latitude: 15, longitude: 25 });
+
+    expect(requestAnimationFrame).toHaveBeenCalledOnce();
+  });
+
+  it('snaps a target received while the document is hidden', () => {
+    const marker = createMarker(10, 20);
+    const markerRef = { current: marker } as RefObject<LeafletMarker | null>;
+    stubAnimationFrames();
+    vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    const { rerender } = renderHook(({ latitude, longitude }) => useInterpolatedMarkerPosition(markerRef, latitude, longitude), {
+      initialProps: { latitude: 10, longitude: 20 },
+    });
+
+    rerender({ latitude: 14, longitude: 24 });
+
+    expect(marker.setLatLng).toHaveBeenCalledWith([14, 24]);
+    expect(requestAnimationFrame).not.toHaveBeenCalled();
   });
 
   it('cancels a pending frame when the target changes and on unmount', () => {
