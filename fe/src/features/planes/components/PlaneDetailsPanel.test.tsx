@@ -67,6 +67,76 @@ describe('PlaneDetailsPanel', () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
+  it('focuses Close for a keyboard selection', () => {
+    const onClose = vi.fn();
+    const { rerender } = render(
+      <PlaneDetailsPanel
+        error={null}
+        focusRequest={null}
+        isOpen={false}
+        onClose={onClose}
+        plane={null}
+        status="disconnected"
+      />,
+    );
+
+    rerender(
+      <PlaneDetailsPanel
+        error={null}
+        focusRequest={{ id: 1, target: 'close' }}
+        isOpen={true}
+        onClose={onClose}
+        plane={plane}
+        status="connected"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Close flight details' })).toHaveFocus();
+  });
+
+  it('focuses the panel after a pointer selection so Tab reaches Close next', async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderPanel({ isOpen: false, plane: null, status: 'disconnected' });
+
+    rerender(
+      <PlaneDetailsPanel
+        error={null}
+        focusRequest={{ id: 1, target: 'panel' }}
+        isOpen={true}
+        onClose={vi.fn()}
+        plane={plane}
+        status="connected"
+      />,
+    );
+
+    const panel = screen.getByRole('complementary', { name: 'Flight details' });
+    expect(panel).toHaveAttribute('tabindex', '-1');
+    expect(panel).toHaveFocus();
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Close flight details' })).toHaveFocus();
+  });
+
+  it('does not move focus again when realtime details update', () => {
+    const { rerender } = renderPanel({ focusRequest: { id: 1, target: 'close' } });
+    const externalControl = document.body.appendChild(document.createElement('button'));
+    externalControl.focus();
+
+    rerender(
+      <PlaneDetailsPanel
+        error={null}
+        focusRequest={{ id: 1, target: 'close' }}
+        isOpen={true}
+        onClose={vi.fn()}
+        plane={{ ...plane, altitude: 10_100 }}
+        status="connected"
+      />,
+    );
+
+    expect(externalControl).toHaveFocus();
+    externalControl.remove();
+  });
+
   it('keeps the panel instance open while switching planes and shows loading before new data', () => {
     const { rerender } = renderPanel();
     const panel = screen.getByRole('complementary', { name: 'Flight details' });

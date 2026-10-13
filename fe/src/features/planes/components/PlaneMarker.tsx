@@ -1,21 +1,25 @@
-import { DivIcon, Marker as LeafletMarker } from 'leaflet';
-import { Plane } from 'lucide-react';
-import { memo, useEffect, useRef } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { Marker, Tooltip } from 'react-leaflet';
+import { DivIcon, Marker as LeafletMarker } from "leaflet";
+import { Plane } from "lucide-react";
+import { memo, useEffect, useRef } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { Marker, Tooltip } from "react-leaflet";
 
-import type { TrackedPlane } from '@/data/planes/types';
+import type { TrackedPlane } from "@/data/planes/types";
 
-import { useInterpolatedMarkerPosition } from '../hooks/useInterpolatedMarkerPosition';
-import type { PlaneMarkerSize } from '../utils/planeMarkerSize';
+import { useInterpolatedMarkerPosition } from "../hooks/useInterpolatedMarkerPosition";
+import type { PlaneMarkerSize } from "../utils/planeMarkerSize";
 
 type PlaneMarkerProps = {
   markerSize: PlaneMarkerSize;
   plane: TrackedPlane;
-  onSelect: (planeId: string) => void;
+  onSelect: (planeId: string, selectedWithKeyboard?: boolean) => void;
 };
 
-export const PlaneMarker = memo(function PlaneMarker({ markerSize, plane, onSelect }: PlaneMarkerProps) {
+export const PlaneMarker = memo(function PlaneMarker({
+  markerSize,
+  plane,
+  onSelect,
+}: PlaneMarkerProps) {
   // Lucide's Plane points north-east by default, so a -45° offset aligns its zero rotation with map north.
   const rotation = plane.heading === null ? -45 : plane.heading - 45;
   const markerRef = useRef<LeafletMarker>(null);
@@ -29,21 +33,26 @@ export const PlaneMarker = memo(function PlaneMarker({ markerSize, plane, onSele
   if (iconRef.current === null) {
     // Keep the DivIcon instance stable so Leaflet does not replace the marker DOM during realtime updates.
     iconRef.current = new DivIcon({
-      className: 'plane-marker-icon',
+      className: "plane-marker-icon",
       html: renderToStaticMarkup(
         <span
           className="plane-marker-visual"
           style={{
-            alignItems: 'center',
+            alignItems: "center",
             color: plane.color,
-            display: 'flex',
-            height: '28px',
-            justifyContent: 'center',
+            display: "flex",
+            height: "28px",
+            justifyContent: "center",
             transform: `rotate(${rotation}deg)`,
-            width: '28px',
+            width: "28px",
           }}
         >
-          <Plane aria-hidden="true" color="currentColor" size={markerSize} strokeWidth={2.5} />
+          <Plane
+            aria-hidden="true"
+            color="currentColor"
+            size={markerSize}
+            strokeWidth={2.5}
+          />
         </span>,
       ),
       iconAnchor: [14, 14],
@@ -53,17 +62,26 @@ export const PlaneMarker = memo(function PlaneMarker({ markerSize, plane, onSele
 
   useEffect(() => {
     // The DivIcon HTML is owned by Leaflet, so access its DOM element directly to update the visual without recreating the icon.
-    const planeVisual = markerRef.current?.getElement()?.querySelector<HTMLElement>('.plane-marker-visual');
+    const planeVisual = markerRef.current
+      ?.getElement()
+      ?.querySelector<HTMLElement>(".plane-marker-visual");
 
     if (!planeVisual) return;
 
     planeVisual.style.color = plane.color;
     planeVisual.style.transform = `rotate(${rotation}deg)`;
-    const planeIcon = planeVisual.querySelector('svg');
+    const planeIcon = planeVisual.querySelector("svg");
 
-    planeIcon?.setAttribute('height', String(markerSize));
-    planeIcon?.setAttribute('width', String(markerSize));
+    planeIcon?.setAttribute("height", String(markerSize));
+    planeIcon?.setAttribute("width", String(markerSize));
   }, [markerSize, plane.color, rotation]);
+
+  useEffect(() => {
+    // DivIcon is not a native button, so give Leaflet's interactive marker a stable accessible name.
+    markerRef.current
+      ?.getElement()
+      ?.setAttribute("aria-label", `Select flight ${plane.id}`);
+  }, [plane.id]);
 
   useInterpolatedMarkerPosition(markerRef, plane.latitude, plane.longitude);
 
@@ -82,9 +100,27 @@ export const PlaneMarker = memo(function PlaneMarker({ markerSize, plane, onSele
 
           // Leaflet keeps a pointer-clicked marker focused and restores its native outline on the next keydown.
           // Release pointer focus now; keyboard-focused markers retain their focus indicator.
-          if (event.originalEvent.detail > 0 && eventTarget instanceof Element) {
-            eventTarget.closest<HTMLElement>('.plane-marker-icon')?.blur();
+          if (
+            event.originalEvent.detail > 0 &&
+            eventTarget instanceof Element
+          ) {
+            eventTarget.closest<HTMLElement>(".plane-marker-icon")?.blur();
           }
+        },
+        keydown: (event) => {
+          // Leaflet makes interactive markers keyboard-focusable with button semantics,
+          // but does not activate them with Enter or Space. Handle both keys explicitly
+          // and prevent Space from scrolling the page, matching native button behavior.
+          if (
+            event.originalEvent.key !== "Enter" &&
+            event.originalEvent.key !== " "
+          )
+            return;
+
+          // Leaflet gives markers button semantics but does not activate them for these keys.
+          // Preventing Space's native scrolling makes this match a real button's keyboard behavior.
+          event.originalEvent.preventDefault();
+          onSelect(plane.id, true);
         },
       }}
     >

@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   markerProps: vi.fn(),
   tooltipProps: vi.fn(),
   markerApis: [] as Array<{
-    getElement: () => HTMLButtonElement | null;
+    getElement: () => HTMLElement | null;
     getLatLng: () => { lat: number; lng: number };
     setLatLng: ReturnType<typeof vi.fn>;
   }>,
@@ -20,13 +20,16 @@ vi.mock('react-leaflet', () => ({
   Marker: forwardRef(function Marker(
     props: {
       bubblingMouseEvents?: boolean;
-      eventHandlers: { click: (event: { originalEvent: MouseEvent }) => void };
+      eventHandlers: {
+        click: (event: { originalEvent: MouseEvent }) => void;
+        keydown?: (event: { originalEvent: KeyboardEvent }) => void;
+      };
       children?: ReactNode;
       position: [number, number];
     },
     ref,
   ) {
-    const markerElementRef = useRef<HTMLButtonElement>(null);
+    const markerElementRef = useRef<HTMLDivElement>(null);
     const markerPositionRef = useRef({ lat: props.position[0], lng: props.position[1] });
     const markerApiRef = useRef({
       getElement: () => markerElementRef.current,
@@ -43,18 +46,20 @@ vi.mock('react-leaflet', () => ({
     useImperativeHandle(ref, () => markerApiRef.current, []);
 
     return (
-      <button
+      <div
         className="plane-marker-icon"
         onClick={(event) => props.eventHandlers.click({ originalEvent: event.nativeEvent })}
+        onKeyDown={(event) => props.eventHandlers.keydown?.({ originalEvent: event.nativeEvent })}
         ref={markerElementRef}
-        type="button"
+        role="button"
+        tabIndex={0}
       >
         <span className="plane-marker-visual">
           Plane marker
           <svg />
         </span>
         {props.children}
-      </button>
+      </div>
     );
   }),
   Tooltip: ({ children, ...props }: { children?: ReactNode; direction?: string; offset?: [number, number] }) => {
@@ -91,7 +96,7 @@ describe('PlaneMarker', () => {
 
     expect(mocks.markerProps).toHaveBeenLastCalledWith(expect.objectContaining({ bubblingMouseEvents: false }));
 
-    await user.click(screen.getByRole('button', { name: 'Plane marker' }));
+    await user.click(screen.getByRole('button', { name: 'Select flight plane-1' }));
 
     expect(onSelect).toHaveBeenCalledOnce();
     expect(onSelect).toHaveBeenCalledWith('plane-1');
@@ -101,7 +106,7 @@ describe('PlaneMarker', () => {
     const user = userEvent.setup();
     render(<PlaneMarker markerSize={28} onSelect={vi.fn()} plane={plane} />);
 
-    const marker = screen.getByRole('button', { name: 'Plane marker' });
+    const marker = screen.getByRole('button', { name: 'Select flight plane-1' });
 
     await user.click(marker);
     expect(marker).not.toHaveFocus();
@@ -109,6 +114,18 @@ describe('PlaneMarker', () => {
     marker.focus();
     fireEvent.click(marker, { detail: 0 });
     expect(marker).toHaveFocus();
+  });
+
+  it('selects from keyboard with Enter or Space and prevents Space scrolling', () => {
+    const onSelect = vi.fn();
+    render(<PlaneMarker markerSize={28} onSelect={onSelect} plane={plane} />);
+
+    const marker = screen.getByRole('button', { name: 'Select flight plane-1' });
+
+    expect(fireEvent.keyDown(marker, { key: 'Enter' })).toBe(false);
+    expect(fireEvent.keyDown(marker, { key: ' ' })).toBe(false);
+    expect(onSelect).toHaveBeenNthCalledWith(1, 'plane-1', true);
+    expect(onSelect).toHaveBeenNthCalledWith(2, 'plane-1', true);
   });
 
   it('keeps the DivIcon stable and updates only the existing visual when heading changes', () => {

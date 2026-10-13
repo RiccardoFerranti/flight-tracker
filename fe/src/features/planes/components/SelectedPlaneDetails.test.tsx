@@ -57,7 +57,14 @@ describe('SelectedPlaneDetails', () => {
     render(<SelectedPlaneDetails onClose={onClose} selectedPlaneId="plane-1" />);
 
     expect(mocks.detailsSocket).toHaveBeenCalledWith('plane-1');
-    expect(mocks.panel).toHaveBeenCalledWith({ error: null, isOpen: true, onClose, plane, status: 'connected' });
+    expect(mocks.panel).toHaveBeenCalledWith({
+      error: null,
+      focusRequest: null,
+      isOpen: true,
+      onClose,
+      plane,
+      status: 'connected',
+    });
   });
 
   it('keeps the panel mounted but closed when no plane is selected', () => {
@@ -67,6 +74,13 @@ describe('SelectedPlaneDetails', () => {
     render(<SelectedPlaneDetails onClose={onClose} selectedPlaneId={null} />);
 
     expect(mocks.detailsSocket).toHaveBeenCalledWith(null);
-    expect(mocks.panel).toHaveBeenCalledWith({ error: null, isOpen: false, onClose, plane: null, status: 'disconnected' });
+    expect(mocks.panel).toHaveBeenCalledWith({
+      error: null,
+      focusRequest: null,
+      isOpen: false,
+      onClose,
+      plane: null,
+      status: 'disconnected',
+    });
   });
 });

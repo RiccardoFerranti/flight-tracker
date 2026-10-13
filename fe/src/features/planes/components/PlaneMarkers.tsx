@@ -8,7 +8,7 @@ import { getPlaneMarkerSize } from '../utils/planeMarkerSize';
 import { PlaneMarker } from './PlaneMarker';
 
 type PlaneMarkersProps = {
-  onPlaneSelect: (planeId: string) => void;
+  onPlaneSelect: (planeId: string, selectedWithKeyboard?: boolean) => void;
   planes: TrackedPlane[];
 };
 

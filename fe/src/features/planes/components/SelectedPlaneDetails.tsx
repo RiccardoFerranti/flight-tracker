@@ -1,13 +1,18 @@
 import { usePlaneDetailsSocket } from "@/data/planes/usePlaneDetailsSocket";
 
-import { PlaneDetailsPanel } from "./PlaneDetailsPanel";
+import {
+  type PlaneDetailsFocusRequest,
+  PlaneDetailsPanel,
+} from "./PlaneDetailsPanel";
 
 type SelectedPlaneDetailsProps = {
+  focusRequest?: PlaneDetailsFocusRequest | null;
   onClose: () => void;
   selectedPlaneId: string | null;
 };
 
 export function SelectedPlaneDetails({
+  focusRequest = null,
   onClose,
   selectedPlaneId,
 }: SelectedPlaneDetailsProps) {
@@ -16,6 +21,7 @@ export function SelectedPlaneDetails({
   return (
     <PlaneDetailsPanel
       error={error}
+      focusRequest={focusRequest}
       isOpen={selectedPlaneId !== null}
       onClose={onClose}
       plane={plane}

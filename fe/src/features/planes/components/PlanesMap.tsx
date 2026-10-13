@@ -7,7 +7,7 @@ import { PlaneMarkers } from "./PlaneMarkers";
 
 type PlanesMapProps = {
   onMapClick: () => void;
-  onPlaneSelect: (planeId: string) => void;
+  onPlaneSelect: (planeId: string, selectedWithKeyboard?: boolean) => void;
 };
 
 export function PlanesMap({ onMapClick, onPlaneSelect }: PlanesMapProps) {
